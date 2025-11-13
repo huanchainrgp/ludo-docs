@@ -2,7 +2,9 @@
 
 ## 📋 Tổng Quan
 
-Bảng `piece_states` là **bảng quan trọng nhất** trong hệ thống gameplay, lưu trữ **trạng thái hiện tại của từng quân cờ** trong game Ludo. Mỗi match có **16 records** (4 players × 4 pieces) hoặc **8 records** (4 players × 2 pieces tùy cấu hình).
+Bảng `piece_states` là **bảng quan trọng nhất** trong hệ thống gameplay, lưu trữ **trạng thái hiện tại của từng quân cờ** trong game Ludo. 
+
+**Cấu hình hiện tại:** Mỗi match có **8 records** (4 players × 2 pieces per player)
 
 ---
 
@@ -247,13 +249,17 @@ finishIndex := ((seatIndex + 1) * 14) - 1  // 13, 27, 41, 55
 
 2. **Điều kiện thắng:**
    ```go
-   // Player thắng khi tất cả pieces có status = in_finish
-   allPiecesFinished := true
+   // Player thắng khi tất cả 2 pieces có status = in_finish
+   finishedCount := 0
    for _, piece := range playerPieces {
-       if piece.Status != PieceStatusInFinishLine {
-           allPiecesFinished = false
-           break
+       if piece.Status == PieceStatusInFinishLine {
+           finishedCount++
        }
+   }
+   
+   // Player wins if all 2 pieces are finished
+   if finishedCount == 2 {
+       match.Finish(userID)  // Player wins!
    }
    ```
 
@@ -267,15 +273,15 @@ finishIndex := ((seatIndex + 1) * 14) - 1  // 13, 27, 41, 55
 // File: internal/modules/gameplay/application/use-cases/initialize_game.go
 
 func initializePieces(matchID, playerOrder) []*PieceState {
-    pieces := make([]*PieceState, 0, 16)  // 4 players × 4 pieces
+    pieces := make([]*PieceState, 0, 8)  // 4 players × 2 pieces
     
     for seatIndex, userID := range playerOrder {
         homeIndex := seatIndex * 14
         finishIndex := ((seatIndex + 1) * 14) - 1
         color := colors[seatIndex]  // red, blue, yellow, purple
         
-        // Tạo 4 pieces cho mỗi player
-        for i := 0; i < 4; i++ {
+        // Tạo 2 pieces cho mỗi player
+        for i := 0; i < 2; i++ {
             piece := &PieceState{
                 MatchID:     matchID,
                 UserID:      userID,
@@ -296,11 +302,11 @@ func initializePieces(matchID, playerOrder) []*PieceState {
 }
 ```
 
-**Kết quả:** 16 records trong bảng `piece_states`
+**Kết quả:** 8 records trong bảng `piece_states`
 
 ```json
 [
-  // Player Red (Seat 0) - 4 pieces
+  // Player Red (Seat 0) - 2 pieces
   {
     "id": "piece-red-1",
     "match_id": "match-123",
@@ -321,9 +327,8 @@ func initializePieces(matchID, playerOrder) []*PieceState {
     "home_index": 0,
     "finish_index": 13
   },
-  // ... 2 more red pieces
   
-  // Player Blue (Seat 1) - 4 pieces
+  // Player Blue (Seat 1) - 2 pieces
   {
     "id": "piece-blue-1",
     "match_id": "match-123",
@@ -334,7 +339,60 @@ func initializePieces(matchID, playerOrder) []*PieceState {
     "home_index": 14,
     "finish_index": 27
   },
-  // ... và tiếp tục cho Yellow, Purple
+  {
+    "id": "piece-blue-2",
+    "match_id": "match-123",
+    "user_id": "player-blue",
+    "status": "in_home",
+    "color": "blue",
+    "position": 14,
+    "home_index": 14,
+    "finish_index": 27
+  },
+  
+  // Player Yellow (Seat 2) - 2 pieces
+  {
+    "id": "piece-yellow-1",
+    "match_id": "match-123",
+    "user_id": "player-yellow",
+    "status": "in_home",
+    "color": "yellow",
+    "position": 28,
+    "home_index": 28,
+    "finish_index": 41
+  },
+  {
+    "id": "piece-yellow-2",
+    "match_id": "match-123",
+    "user_id": "player-yellow",
+    "status": "in_home",
+    "color": "yellow",
+    "position": 28,
+    "home_index": 28,
+    "finish_index": 41
+  },
+  
+  // Player Purple (Seat 3) - 2 pieces
+  {
+    "id": "piece-purple-1",
+    "match_id": "match-123",
+    "user_id": "player-purple",
+    "status": "in_home",
+    "color": "purple",
+    "position": 42,
+    "home_index": 42,
+    "finish_index": 55
+  },
+  {
+    "id": "piece-purple-2",
+    "match_id": "match-123",
+    "user_id": "player-purple",
+    "status": "in_home",
+    "color": "purple",
+    "position": 42,
+    "home_index": 42,
+    "finish_index": 55
+  }
 ]
 ```
 
@@ -663,7 +721,7 @@ WHERE match_id = 'match-uuid-123'
   AND user_id = 'player-red-uuid'
   AND status = 'in_finish';
   
--- If finished_count = 4 (or 2) → Player wins!
+-- If finished_count = 2 → Player wins!
 ```
 
 **Use Case:** Kiểm tra player có thắng chưa
@@ -751,10 +809,10 @@ FROM piece_states
 WHERE match_id = 'match-123'
 GROUP BY status;
 
--- Result:
--- in_home: 8 pieces (50%)
--- in_track: 6 pieces (37.5%)
--- in_finish: 2 pieces (12.5%)
+-- Example Result (8 pieces total):
+-- in_home: 4 pieces (50%)
+-- in_track: 3 pieces (37.5%)
+-- in_finish: 1 piece (12.5%)
 ```
 
 ### **Player Progress**
@@ -874,22 +932,22 @@ piece_states
 
 ### **Key Points:**
 
-1. **16 records per match** (4 players × 4 pieces)
+1. **8 records per match** (4 players × 2 pieces per player)
 2. **3 statuses:** in_home, in_track, in_finish
 3. **Position range:** 0-55 (56 cells)
 4. **Immutable:** home_index, finish_index, color
 5. **Mutable:** position, status
 6. **Tracked by:** piece_race_histories, piece_kick_histories
-7. **Win condition:** All player's pieces have status = in_finish
+7. **Win condition:** All 2 pieces of a player have status = in_finish
 
 ### **Common Operations:**
 
-- ✅ Create 16 pieces when initialize game
+- ✅ Create 8 pieces when initialize game (2 per player)
 - ✅ Update position when move
 - ✅ Update status when state changes
 - ✅ Reset to home when kicked
 - ✅ Query by match_id, user_id, status, position
-- ✅ Check win condition
+- ✅ Check win condition (all 2 pieces finished)
 
 ---
 
