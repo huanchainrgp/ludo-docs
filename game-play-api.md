@@ -10,7 +10,7 @@ Tài liệu này mô tả cách tích hợp với Gameplay API của hệ thốn
 4. [API Endpoints](#api-endpoints)
 5. [Data Transfer Objects (DTOs)](#data-transfer-objects-dtos)
 6. [Error Handling](#error-handling)
-7. [WebSocket Events](#websocket-events)
+7. [Turn Management](#turn-management)
 8. [Integration Examples](#integration-examples)
 9. [Best Practices](#best-practices)
 
@@ -141,7 +141,6 @@ curl -X POST \
 - Chỉ người chơi có lượt hiện tại mới có thể tung xúc xắc
 - Mỗi lượt chỉ có thể tung xúc xắc một lần
 - Kết quả được tính từ weighted dice pool system
-- WebSocket event `dice_rolled` sẽ được broadcast đến tất cả người chơi trong room
 
 ---
 
@@ -582,45 +581,139 @@ Tất cả các lỗi trả về theo format:
 
 ---
 
-## WebSocket Events
+## Turn Management
 
-### Dice Rolled Event
+Turn management là một phần quan trọng của gameplay. Mỗi match có một lượt chơi hiện tại (`current_turn`) và chỉ người chơi có lượt mới có thể thực hiện các hành động.
 
-Khi một người chơi tung xúc xắc, event sẽ được broadcast đến tất cả người chơi trong room.
+### Turn Structure
 
-**Event Name:** `dice_rolled`
+Game state chứa thông tin về turn:
+- `current_turn`: Số lượt hiện tại (bắt đầu từ 1)
+- `current_player_seat_index`: Chỉ số của người chơi đang có lượt (0-3)
+- `player_order`: Mảng thứ tự người chơi (được randomize khi initialize game)
 
-**Namespace:** `gameplay`
+### Checking Current Turn
 
-**Message Format:**
-```json
-{
-  "namespace": "gameplay",
-  "event": "dice_rolled",
-  "type": "data",
-  "data": {
-    "id": "roll-123",
-    "match_id": "550e8400-e29b-41d4-a716-446655440000",
-    "user_id": "user-1",
-    "turn": 1,
-    "roll_value": [3, 4],
-    "result": 7,
-    "created_at": 1704067200000,
-    "updated_at": 1704067200000
-  }
+Để kiểm tra lượt hiện tại, lấy game state:
+
+```typescript
+const gameState = await gameplayApi.getGameState(matchId);
+
+// Check if it's your turn
+const currentPlayerId = gameState.player_order[gameState.current_player_seat_index];
+const isMyTurn = currentPlayerId === userId;
+
+if (isMyTurn) {
+  console.log(`It's your turn! Turn ${gameState.current_turn}`);
+} else {
+  console.log(`Waiting for player ${currentPlayerId}...`);
 }
 ```
 
-**Client Handling:**
+### Turn Flow
+
+1. **Initialize Game**: Turn bắt đầu từ 1, `current_player_seat_index` = 0
+2. **Roll Dice**: Chỉ người chơi có lượt mới có thể roll dice
+3. **Move Piece**: Sau khi roll dice, người chơi có thể di chuyển quân cờ
+4. **Advance Turn**: Turn tự động advance sau khi người chơi hoàn thành lượt (sau khi move hoặc skip)
+
+### Turn Advancement Rules
+
+- Turn tự động advance khi:
+  - Người chơi hoàn thành move
+  - Người chơi skip lượt (nếu không có nước đi hợp lệ)
+  - Timer hết hạn
+- Double dice (6-6): Người chơi có thể tiếp tục lượt (không advance turn)
+- Max 3 doubles: Sau 3 lần double liên tiếp, turn sẽ advance
+
+### Example: Turn Management
+
 ```typescript
-// Listen for dice roll events
-websocketManager.on('dice_rolled', (message: WebSocketMessage) => {
-  const rollData = message.data as RollHistoryDTO;
-  console.log(`Player ${rollData.user_id} rolled ${rollData.result}`);
-  // Update UI to show dice roll result
-  updateDiceDisplay(rollData);
-});
+class TurnManager {
+  private gameState: GameStateDTO | null = null;
+  private userId: string;
+
+  constructor(userId: string) {
+    this.userId = userId;
+  }
+
+  // Check if it's current player's turn
+  async isMyTurn(matchId: string): Promise<boolean> {
+    this.gameState = await gameplayApi.getGameState(matchId);
+    const currentPlayerId = this.gameState.player_order[
+      this.gameState.current_player_seat_index
+    ];
+    return currentPlayerId === this.userId;
+  }
+
+  // Get current player info
+  getCurrentPlayer(): { user_id: string; seat_index: number } | null {
+    if (!this.gameState) return null;
+    
+    const seatIndex = this.gameState.current_player_seat_index;
+    const userId = this.gameState.player_order[seatIndex];
+    
+    return { user_id: userId, seat_index: seatIndex };
+  }
+
+  // Wait for turn (polling)
+  async waitForTurn(matchId: string, maxWaitTime: number = 300000): Promise<void> {
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < maxWaitTime) {
+      if (await this.isMyTurn(matchId)) {
+        return;
+      }
+      await sleep(2000); // Poll every 2 seconds
+    }
+    
+    throw new Error('Timeout waiting for turn');
+  }
+
+  // Get turn info
+  getTurnInfo(): { turn: number; player_index: number; player_id: string } | null {
+    if (!this.gameState) return null;
+    
+    return {
+      turn: this.gameState.current_turn,
+      player_index: this.gameState.current_player_seat_index,
+      player_id: this.gameState.player_order[this.gameState.current_player_seat_index]
+    };
+  }
+}
+
+// Usage
+const turnManager = new TurnManager('user-123');
+
+// Check turn before action
+if (await turnManager.isMyTurn(matchId)) {
+  // Roll dice
+  await gameplayApi.rollDice(matchId);
+} else {
+  const currentPlayer = turnManager.getCurrentPlayer();
+  console.log(`Waiting for ${currentPlayer?.user_id}...`);
+}
 ```
+
+### Turn Validation
+
+Trước khi thực hiện bất kỳ action nào, luôn validate turn:
+
+```typescript
+async function validateTurn(matchId: string, userId: string): Promise<void> {
+  const gameState = await gameplayApi.getGameState(matchId);
+  const currentPlayerId = gameState.player_order[gameState.current_player_seat_index];
+  
+  if (currentPlayerId !== userId) {
+    throw new Error(`Not your turn. Current player: ${currentPlayerId}`);
+  }
+}
+
+// Before rolling dice
+await validateTurn(matchId, userId);
+await gameplayApi.rollDice(matchId);
+```
+
 
 ---
 
@@ -755,15 +848,14 @@ async function playGame(matchId: string, userId: string) {
         const rollResult = await gameplayApi.rollDice(matchId);
         console.log(`You rolled: ${rollResult.result}`);
         
-        // Wait for WebSocket event to confirm
         // Then make move decision...
       } else {
         // Wait for other player's turn
         console.log(`Waiting for player ${currentPlayerId}...`);
       }
 
-      // Poll for game state updates (or use WebSocket)
-      await sleep(1000);
+      // Poll for game state updates
+      await sleep(2000); // Poll every 2 seconds
       gameState = await gameplayApi.getGameState(matchId);
     }
 
@@ -805,17 +897,19 @@ try {
 }
 ```
 
-### 2. Polling vs WebSocket
+### 2. Polling Strategy
 
-- **Use WebSocket** cho real-time updates (dice rolls, game state changes)
-- **Use HTTP polling** cho periodic checks hoặc khi WebSocket không available
+- **Use HTTP polling** để cập nhật game state định kỳ
 - **Poll interval**: Không nên poll quá thường xuyên (recommended: 1-2 seconds)
+- Poll game state khi game đang IN_PROGRESS
+- Giảm polling frequency khi không có thay đổi
 
 ### 3. State Management
 
 - Cache game state locally để giảm số lượng API calls
-- Update cache khi nhận WebSocket events
+- Update cache sau mỗi API call thành công
 - Sync với server định kỳ để đảm bảo consistency
+- Invalidate cache khi có thay đổi quan trọng (turn change, dice roll)
 
 ### 4. Turn Management
 
@@ -826,8 +920,9 @@ try {
 ### 5. Performance
 
 - Batch requests khi có thể
-- Use WebSocket thay vì polling khi có thể
+- Poll game state một cách thông minh (chỉ khi cần thiết)
 - Cache static data (dice pool config, board configuration)
+- Debounce polling requests để tránh spam server
 
 ### 6. Security
 
@@ -850,7 +945,7 @@ try {
    - Roll dice on player's turn
    - Roll dice when not player's turn (should fail)
    - Roll dice twice in same turn (should fail)
-   - Verify WebSocket broadcast
+   - Verify turn advancement after roll
 
 3. **Get Game State**
    - Get game state for active match
