@@ -65,10 +65,10 @@ graph TB
     
     GameFinished --> End([End])
     
-    style Start fill:#90EE90
-    style End fill:#FFB6C1
-    style GameReady fill:#87CEEB
-    style GameFinished fill:#FFD700
+    style Start fill:#4CAF50,stroke:#2E7D32,color:#FFFFFF
+    style End fill:#E53935,stroke:#B71C1C,color:#FFFFFF
+    style GameReady fill:#1976D2,stroke:#0D47A1,color:#FFFFFF
+    style GameFinished fill:#FFB300,stroke:#F57F17,color:#111111
 ```
 
 ---
@@ -101,11 +101,11 @@ flowchart TD
     SaveBalances --> CreateDicePool[Create Dice Pool in Redis]
     CreateDicePool --> Success([Game Initialized])
     
-    style Start fill:#90EE90
-    style Success fill:#90EE90
-    style Error1 fill:#FFB6C1
-    style Error2 fill:#FFB6C1
-    style Error3 fill:#FFB6C1
+    style Start fill:#4CAF50,stroke:#2E7D32,color:#FFFFFF
+    style Success fill:#43A047,stroke:#1B5E20,color:#FFFFFF
+    style Error1 fill:#E53935,stroke:#B71C1C,color:#FFFFFF
+    style Error2 fill:#E53935,stroke:#B71C1C,color:#FFFFFF
+    style Error3 fill:#E53935,stroke:#B71C1C,color:#FFFFFF
 ```
 
 ---
@@ -312,12 +312,12 @@ flowchart TD
     UpdateMatch --> UpdateGameState[Update Game State]
     UpdateGameState --> ReturnResult([Return Roll Result])
     
-    style Start fill:#90EE90
-    style ReturnResult fill:#90EE90
-    style AuthError fill:#FFB6C1
-    style MatchError fill:#FFB6C1
-    style GameError fill:#FFB6C1
-    style TurnError fill:#FFB6C1
+    style Start fill:#4CAF50,stroke:#2E7D32,color:#FFFFFF
+    style ReturnResult fill:#43A047,stroke:#1B5E20,color:#FFFFFF
+    style AuthError fill:#E53935,stroke:#B71C1C,color:#FFFFFF
+    style MatchError fill:#E53935,stroke:#B71C1C,color:#FFFFFF
+    style GameError fill:#E53935,stroke:#B71C1C,color:#FFFFFF
+    style TurnError fill:#E53935,stroke:#B71C1C,color:#FFFFFF
 ```
 
 ### Move Piece Flow
@@ -366,14 +366,14 @@ flowchart TD
     
     UpdateMatch --> Success([Move Success])
     
-    style Start fill:#90EE90
-    style Success fill:#90EE90
-    style Error1 fill:#FFB6C1
-    style Error2 fill:#FFB6C1
-    style Error3 fill:#FFB6C1
-    style Error4 fill:#FFB6C1
-    style Error5 fill:#FFB6C1
-    style Error6 fill:#FFB6C1
+    style Start fill:#4CAF50,stroke:#2E7D32,color:#FFFFFF
+    style Success fill:#43A047,stroke:#1B5E20,color:#FFFFFF
+    style Error1 fill:#E53935,stroke:#B71C1C,color:#FFFFFF
+    style Error2 fill:#E53935,stroke:#B71C1C,color:#FFFFFF
+    style Error3 fill:#E53935,stroke:#B71C1C,color:#FFFFFF
+    style Error4 fill:#E53935,stroke:#B71C1C,color:#FFFFFF
+    style Error5 fill:#E53935,stroke:#B71C1C,color:#FFFFFF
+    style Error6 fill:#E53935,stroke:#B71C1C,color:#FFFFFF
 ```
 
 ---
@@ -411,10 +411,10 @@ flowchart LR
     
     BuildPath --> End([Position Determined])
     
-    style Start fill:#90EE90
-    style End fill:#90EE90
-    style ErrorHome fill:#FFB6C1
-    style ErrorFinish fill:#FFB6C1
+    style Start fill:#4CAF50,stroke:#2E7D32,color:#FFFFFF
+    style End fill:#43A047,stroke:#1B5E20,color:#FFFFFF
+    style ErrorHome fill:#E53935,stroke:#B71C1C,color:#FFFFFF
+    style ErrorFinish fill:#E53935,stroke:#B71C1C,color:#FFFFFF
 ```
 
 ---
@@ -459,8 +459,8 @@ flowchart TD
     
     EndLanding --> ReturnResults([Return Results])
     
-    style Start fill:#90EE90
-    style ReturnResults fill:#90EE90
+    style Start fill:#4CAF50,stroke:#2E7D32,color:#FFFFFF
+    style ReturnResults fill:#43A047,stroke:#1B5E20,color:#FFFFFF
 ```
 
 ### Pass-Through vs Landing Interaction
@@ -500,8 +500,8 @@ graph TB
     
     Combine --> End([Interaction Complete])
     
-    style Start fill:#90EE90
-    style End fill:#90EE90
+    style Start fill:#4CAF50,stroke:#2E7D32,color:#FFFFFF
+    style End fill:#43A047,stroke:#1B5E20,color:#FFFFFF
 ```
 
 ---
@@ -649,10 +649,10 @@ graph TB
         Cells3 -->|14 cells| Cells0
     end
     
-    style P0 fill:#FF6B6B
-    style P1 fill:#4ECDC4
-    style P2 fill:#FFE66D
-    style P3 fill:#A8E6CF
+    style P0 fill:#EF5350,stroke:#B71C1C,color:#FFFFFF
+    style P1 fill:#29B6F6,stroke:#0277BD,color:#FFFFFF
+    style P2 fill:#FFD54F,stroke:#F57F17,color:#111111
+    style P3 fill:#AB47BC,stroke:#6A1B9A,color:#FFFFFF
 ```
 
 ---
@@ -680,10 +680,10 @@ flowchart TD
     NormalTurn --> EndTurn
     EndTurn --> NextPlayer[Next Player]
     
-    style RollDice fill:#90EE90
-    style ExtraTurn fill:#FFD700
-    style PenaltyTurn fill:#FFB6C1
-    style NextPlayer fill:#87CEEB
+    style RollDice fill:#4CAF50,stroke:#2E7D32,color:#FFFFFF
+    style ExtraTurn fill:#FFB300,stroke:#F57F17,color:#111111
+    style PenaltyTurn fill:#E53935,stroke:#B71C1C,color:#FFFFFF
+    style NextPlayer fill:#1976D2,stroke:#0D47A1,color:#FFFFFF
 ```
 
 ---
